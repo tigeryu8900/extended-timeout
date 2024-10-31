@@ -1,6 +1,11 @@
 import * as timers from "node:timers";
 
 export default class Timeout {
+  private static ref_count: number = 0;
+  private static readonly MAX_TIMEOUT = 2147483647;
+  private static dummy_timeout: NodeJS.Timeout = timers.setInterval(() => {
+  }, Timeout.MAX_TIMEOUT).unref();
+  private static entries: Record<string, Timeout> = {};
   private readonly created_at: number;
   private readonly delay: number;
   private readonly repeat: boolean;
@@ -10,11 +15,6 @@ export default class Timeout {
   private readonly key: string;
   private is_extended: boolean;
   private internal_timeout: NodeJS.Timeout | null = null;
-
-  static ref_count: number = 0;
-  static readonly MAX_TIMEOUT = 2147483647;
-  static dummy_timeout: NodeJS.Timeout = timers.setInterval(() => {}, Timeout.MAX_TIMEOUT).unref();
-  static entries: Record<string, Timeout> = {};
 
   constructor(repeat: boolean, is_ref: boolean, callback: (...a: typeof args) => void, delay: number, args: any[]) {
     this.created_at = Date.now();
@@ -45,6 +45,45 @@ export default class Timeout {
           this.internal_timeout = null;
         }, delay);
       }
+    }
+  }
+
+  static main() {
+    timers.setInterval(() => {
+      for (const entry of Object.values(Timeout.entries)) {
+        entry.dispatch();
+      }
+    }, Timeout.MAX_TIMEOUT).unref();
+  }
+
+  static clear(timeoutId: string | NodeJS.Timeout | Timeout | undefined): void {
+    switch (typeof timeoutId) {
+      case "string":
+        Timeout.entries[timeoutId][Symbol.dispose]();
+        break;
+      case "object":
+        timeoutId[Symbol.dispose]();
+        break;
+      default:
+        break;
+    }
+  }
+
+  private static inc_ref(): void {
+    Timeout.ref_count++;
+    Timeout.dummy_timeout.ref();
+  }
+
+  private static dec_ref(): void {
+    switch (Timeout.ref_count) {
+      case 0:
+        break;
+      case 1:
+        Timeout.ref_count = 0;
+        Timeout.dummy_timeout.unref();
+        break;
+      default:
+        Timeout.ref_count--;
     }
   }
 
@@ -85,24 +124,6 @@ export default class Timeout {
     return this.key;
   }
 
-  private static inc_ref(): void {
-    Timeout.ref_count++;
-    Timeout.dummy_timeout.ref();
-  }
-
-  private static dec_ref(): void {
-    switch (Timeout.ref_count) {
-      case 0:
-        break;
-      case 1:
-        Timeout.ref_count = 0;
-        Timeout.dummy_timeout.unref();
-        break;
-      default:
-        Timeout.ref_count--;
-    }
-  }
-
   private dispatch(): void {
     if (this.is_extended) {
       if (this.repeat) {
@@ -124,14 +145,6 @@ export default class Timeout {
         }
       }
     }
-  }
-
-  static main() {
-    timers.setInterval(() => {
-      for (const entry of Object.values(Timeout.entries)) {
-        entry.dispatch();
-      }
-    }, Timeout.MAX_TIMEOUT).unref();
   }
 }
 

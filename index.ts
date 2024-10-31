@@ -11,21 +11,8 @@ export function setInterval(callback: (...a: typeof args) => void, delay: number
   return new Timeout(true, true, callback, delay, args);
 }
 
-function clear(timeoutId: string | NodeJS.Timeout | Timeout | undefined): void {
-  switch (typeof timeoutId) {
-    case "string":
-      Timeout.entries[timeoutId][Symbol.dispose]();
-      break;
-    case "object":
-      timeoutId[Symbol.dispose]();
-      break;
-    default:
-      break;
-  }
-}
+export const clearImmediate = Timeout.clear;
 
-export const clearImmediate = clear;
+export const clearTimeout = Timeout.clear;
 
-export const clearTimeout = clear;
-
-export const clearInterval = clear;
+export const clearInterval = Timeout.clear;

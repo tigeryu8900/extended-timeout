@@ -1,4 +1,8 @@
 export default class Timeout {
+    private static ref_count;
+    private static readonly MAX_TIMEOUT;
+    private static dummy_timeout;
+    private static entries;
     private readonly created_at;
     private readonly delay;
     private readonly repeat;
@@ -8,18 +12,15 @@ export default class Timeout {
     private readonly key;
     private is_extended;
     private internal_timeout;
-    static ref_count: number;
-    static readonly MAX_TIMEOUT = 2147483647;
-    static dummy_timeout: NodeJS.Timeout;
-    static entries: Record<string, Timeout>;
     constructor(repeat: boolean, is_ref: boolean, callback: (...a: typeof args) => void, delay: number, args: any[]);
+    static main(): void;
+    static clear(timeoutId: string | NodeJS.Timeout | Timeout | undefined): void;
+    private static inc_ref;
+    private static dec_ref;
     hasRef(): boolean;
     ref(): Timeout;
     unref(): Timeout;
     [Symbol.dispose](): void;
     [Symbol.toPrimitive](): string;
-    private static inc_ref;
-    private static dec_ref;
     private dispatch;
-    static main(): void;
 }
